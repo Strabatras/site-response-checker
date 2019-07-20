@@ -27,6 +27,7 @@ func ( json ConfigurationJson ) GetPreferences() ConfigurationPreferencesInterfa
 	return json.Preferences;
 }
 
+// Путь до рабочей директории проекта
 func ( json ConfigurationPreferencesJson ) GetBasePath() string {
 	return json.BasePath;
 }

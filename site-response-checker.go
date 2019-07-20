@@ -2,39 +2,66 @@ package main
 
 import (
 	"./configuration"
+	"fmt"
 	"log"
 	"os"
 )
 
 var (
-	BASE_PATH		string									;
-	PATH_SEPARATOR	string 		= string( os.PathSeparator );
-	LOG_FILE_EXT	string		= "log";
-	LOG_FILE		string		= "application";
+	CONFIGURATION	configuration.ConfigurationInterface	;
+	PATH_SEPARATOR	string 									= string( os.PathSeparator );
+	LOG_FILE		*os.File								;
 )
 
 
 func init(){
 
-	var configuration configuration.ConfigurationInterface  = configuration.Get( "json" );
-	BASE_PATH 		= configuration.GetPreferences().GetBasePath();
+	CONFIGURATION  = configuration.Get( "json" );
 
+	if ( CONFIGURATION.GetPreferences().IsProduction() ) {
+		loggingInit();
+	}
 
 }
 
-func logFilePath() string {
-	return BASE_PATH + PATH_SEPARATOR + LOG_FILE + "." + LOG_FILE_EXT;
-}
-
-func main()  {
-	logFile, err := os.OpenFile(logFilePath() , os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0666);
+// Инициализация логирования
+func loggingInit() {
+	LOG_FILE, err := os.OpenFile(  preferences().GetBasePath() + PATH_SEPARATOR + "application.log" , os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0666);
 	if err != nil {
 		log.Fatalf("Error opening log file: %v", err);
 	}
-	defer logFile.Close();
-	log.SetOutput(logFile);
+	log.SetOutput( LOG_FILE );
+}
 
-	log.Println("======= START Site Response Checker =======");
+// Закрываем ссылку на файл логирования
+func loggingClose() {
+	if LOG_FILE != nil {
+		LOG_FILE.Close();
+	}
+}
 
-	log.Println("======= STOP  Site Response Checker =======");
+// Логирование
+func logging( message string ){
+
+	var preferences = preferences();
+	if ( preferences.IsProduction() ) {
+		log.Println( message );
+	}
+	if ( preferences.IsDevelopment() ){
+		fmt.Println( message );
+	}
+}
+
+
+func preferences() configuration.ConfigurationPreferencesInterface {
+	return CONFIGURATION.GetPreferences();
+}
+
+func main()  {
+
+	defer loggingClose();
+
+	logging("======= START Site Response Checker =======");
+
+	logging("======= STOP  Site Response Checker =======");
 }
