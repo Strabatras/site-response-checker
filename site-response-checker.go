@@ -4,7 +4,9 @@ import (
 	"./configuration"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 )
 
 var (
@@ -57,11 +59,71 @@ func preferences() configuration.ConfigurationPreferencesInterface {
 	return CONFIGURATION.GetPreferences();
 }
 
+func task(t chan int)  {
+
+	rand.Seed(time.Now().UnixNano());
+	min := 100;
+	max := 500;
+	rnd := rand.Intn(max - min) + min;
+
+	duration := time.Duration( rnd ) * time.Millisecond;
+	time.Sleep(duration);
+
+	t<- 1
+	close(t);
+}
+
+func worker(c chan int) {
+	var worker = true;
+
+	//t := make(chan int);
+
+	var i int = 0;
+	for ( worker ){
+
+		if ( i > 10 ){
+			worker = false;
+		}
+
+		//task(t);
+
+		c <- i * i;
+
+		i++;
+	}
+/*
+	for {
+		val, ok := <-t
+		if ok == false {
+			fmt.Println(val, ok, "<-- W loop close!")
+			break;
+		} else {
+			fmt.Println(val, ok)
+		}
+	}
+
+*/	close(c);
+}
+
 func main()  {
 
 	defer loggingClose();
 
 	logging("======= START Site Response Checker =======");
+
+	c := make(chan int)
+
+	go worker(c) // start goroutine
+
+	for {
+		val, ok := <-c
+		if ok == false {
+			fmt.Println(val, ok, "<-- loop close!")
+			break;
+		} else {
+			fmt.Println(val, ok)
+		}
+	}
 
 	logging("======= STOP  Site Response Checker =======");
 }
