@@ -4,9 +4,7 @@ import (
 	"./configuration"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
-	"time"
 )
 
 var (
@@ -59,50 +57,27 @@ func preferences() configuration.ConfigurationPreferencesInterface {
 	return CONFIGURATION.GetPreferences();
 }
 
-func task(t chan int)  {
 
-	rand.Seed(time.Now().UnixNano());
-	min := 100;
-	max := 500;
-	rnd := rand.Intn(max - min) + min;
+func worker( jobs chan int, done chan bool ) {
 
-	duration := time.Duration( rnd ) * time.Millisecond;
-	time.Sleep(duration);
-
-	t<- 1
-	close(t);
-}
-
-func worker(c chan int) {
-	var worker = true;
-
-	//t := make(chan int);
-
-	var i int = 0;
-	for ( worker ){
-
-		if ( i > 10 ){
-			worker = false;
-		}
-
-		//task(t);
-
-		c <- i * i;
-
-		i++;
-	}
-/*
 	for {
-		val, ok := <-t
-		if ok == false {
-			fmt.Println(val, ok, "<-- W loop close!")
-			break;
+		j, more := <-jobs
+		if more {
+/*			rand.Seed(time.Now().UnixNano())
+			min := 100
+			max := 500
+			rnd := rand.Intn(max-min) + min
+
+			duration := time.Duration(rnd) * time.Millisecond
+			time.Sleep(duration)*/
+			fmt.Println("received job => ", j )
 		} else {
-			fmt.Println(val, ok)
+			fmt.Println("received all jobs => " )
+			done <- true
+			return
 		}
 	}
 
-*/	close(c);
 }
 
 func main()  {
@@ -111,19 +86,22 @@ func main()  {
 
 	logging("======= START Site Response Checker =======");
 
-	c := make(chan int)
+	jobs := make(chan int, 5)
+	done := make(chan bool)
 
-	go worker(c) // start goroutine
-
-	for {
-		val, ok := <-c
-		if ok == false {
-			fmt.Println(val, ok, "<-- loop close!")
-			break;
-		} else {
-			fmt.Println(val, ok)
-		}
+	for k := 0; k < 5; k++ {
+		go worker(jobs, done )
 	}
+
+	// читаем файл строки посылаем в канал
+	for j := 1; j <= 30; j++ {
+		jobs <- j
+		fmt.Println("sent line", j)
+	}
+	close(jobs)
+	fmt.Println("закрыли канал jobs")
+
+	<-done
 
 	logging("======= STOP  Site Response Checker =======");
 }
