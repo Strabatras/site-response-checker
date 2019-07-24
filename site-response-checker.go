@@ -17,17 +17,18 @@ var (
 	WORKER_MAX		int										= 5;
 )
 
+// Результат запроса
 type Request struct {
 	Url 		string	;
 	StatusCode	int		;
 }
 
+// Данные строки
 type DataLine struct {
 	Id 					int			;
 	Line				string		;
 	RequestMain			Request		;
-	RequestAdditionals	[]Request	;
-
+	RequestAdditionals	[]Request	;git
 }
 
 func init(){
