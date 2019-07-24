@@ -4,15 +4,31 @@ import (
 	"./configuration"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"sync"
+	"time"
 )
 
 var (
 	CONFIGURATION	configuration.ConfigurationInterface	;
 	PATH_SEPARATOR	string 									= string( os.PathSeparator );
 	LOG_FILE		*os.File								;
+	WORKER_MAX		int										= 5;
 )
 
+type Request struct {
+	Url 		string	;
+	StatusCode	int		;
+}
+
+type DataLine struct {
+	Id 					int			;
+	Line				string		;
+	RequestMain			Request		;
+	RequestAdditionals	[]Request	;
+
+}
 
 func init(){
 
@@ -58,22 +74,22 @@ func preferences() configuration.ConfigurationPreferencesInterface {
 }
 
 
-func worker( jobs chan int, done chan bool ) {
-
+func worker( lines chan DataLine, waitGroup *sync.WaitGroup ) {
+	defer waitGroup.Done()
 	for {
-		j, more := <-jobs
+		j, more := <-lines
 		if more {
-/*			rand.Seed(time.Now().UnixNano())
+			rand.Seed(time.Now().UnixNano())
 			min := 100
-			max := 500
+			max := 5000
 			rnd := rand.Intn(max-min) + min
 
 			duration := time.Duration(rnd) * time.Millisecond
-			time.Sleep(duration)*/
+			time.Sleep(duration)
 			fmt.Println("received job => ", j )
 		} else {
 			fmt.Println("received all jobs => " )
-			done <- true
+			//done <- true
 			return
 		}
 	}
@@ -86,22 +102,24 @@ func main()  {
 
 	logging("======= START Site Response Checker =======");
 
-	jobs := make(chan int, 5)
-	done := make(chan bool)
+	var waitGroup sync.WaitGroup
+	waitGroup.Add( WORKER_MAX );
 
-	for k := 0; k < 5; k++ {
-		go worker(jobs, done )
+	lines := make( chan DataLine, WORKER_MAX );
+
+	for i := 0; i < WORKER_MAX; i++ {
+		go worker( lines, &waitGroup );
 	}
 
 	// читаем файл строки посылаем в канал
 	for j := 1; j <= 30; j++ {
-		jobs <- j
-		fmt.Println("sent line", j)
+		lines <- DataLine { Id: j };
+		fmt.Println("sent line", j );
 	}
-	close(jobs)
-	fmt.Println("закрыли канал jobs")
+	close( lines );
+	fmt.Println("закрыли канал jobs" )
 
-	<-done
+	waitGroup.Wait()
 
 	logging("======= STOP  Site Response Checker =======");
 }
