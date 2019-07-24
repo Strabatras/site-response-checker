@@ -28,7 +28,7 @@ type DataLine struct {
 	Id 					int			;
 	Line				string		;
 	RequestMain			Request		;
-	RequestAdditionals	[]Request	;git
+	RequestAdditionals	[]Request	;
 }
 
 func init(){
