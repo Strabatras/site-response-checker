@@ -4,10 +4,8 @@ import (
 	"./configuration"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"sync"
-	"time"
 )
 
 var (
@@ -78,20 +76,17 @@ func preferences() configuration.ConfigurationPreferencesInterface {
 func worker( lines chan DataLine, waitGroup *sync.WaitGroup ) {
 	defer waitGroup.Done()
 	for {
-		j, more := <-lines
+		line, more := <-lines
 		if more {
-			rand.Seed(time.Now().UnixNano())
-			min := 100
-			max := 5000
-			rnd := rand.Intn(max-min) + min
-
-			duration := time.Duration(rnd) * time.Millisecond
-			time.Sleep(duration)
-			fmt.Println("received job => ", j )
+			/*
+				1) разобрать строку
+				2) отправить запрос
+				3) получить данные
+				4) разобрать данные
+			 */
+			fmt.Println("received job => ", line.Id )
 		} else {
-			fmt.Println("received all jobs => " )
-			//done <- true
-			return
+			return;
 		}
 	}
 
@@ -118,9 +113,9 @@ func main()  {
 		fmt.Println("sent line", j );
 	}
 	close( lines );
-	fmt.Println("закрыли канал jobs" )
+	fmt.Println("закрыли канал" )
 
-	waitGroup.Wait()
+	waitGroup.Wait();
 
 	logging("======= STOP  Site Response Checker =======");
 }
