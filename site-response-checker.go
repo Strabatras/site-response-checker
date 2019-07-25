@@ -2,9 +2,12 @@ package main
 
 import (
 	"./configuration"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"regexp"
 	"sync"
 )
 
@@ -24,7 +27,7 @@ type Request struct {
 // Данные строки
 type DataLine struct {
 	Id 					int			;
-	Line				string		;
+	Line				[]string	;
 	RequestMain			Request		;
 	RequestAdditionals	[]Request	;
 }
@@ -67,11 +70,30 @@ func logging( message string ){
 	}
 }
 
-
+// Общие настройки
 func preferences() configuration.ConfigurationPreferencesInterface {
 	return CONFIGURATION.GetPreferences();
 }
 
+func matched( pattern string, text string ) bool {
+	matched, _ := regexp.Match( pattern, []byte( text ) );
+	if matched {
+		return true;
+	}
+	return false;
+}
+
+func prepareDataLine ( dataLine *DataLine ) {
+	if ( dataLine.Id == 40 ) {
+		pattern := `(http)|(https)://\w+\.\w{2,}`
+		for _, value := range dataLine.Line {
+			if ( matched( pattern, value ) ) {
+				fmt.Println( value );
+				fmt.Println( "" );
+			}
+		}
+	}
+}
 
 func worker( lines chan DataLine, waitGroup *sync.WaitGroup ) {
 	defer waitGroup.Done()
@@ -84,12 +106,19 @@ func worker( lines chan DataLine, waitGroup *sync.WaitGroup ) {
 				3) получить данные
 				4) разобрать данные
 			 */
-			fmt.Println("received job => ", line.Id )
+
+			prepareDataLine( &line );
+			//fmt.Println("DataLine", line );
+			//fmt.Println("received job => ", line.Id );
 		} else {
 			return;
 		}
 	}
 
+}
+
+func errorToLogging(  error error ) string {
+	return error.Error();
 }
 
 func main()  {
@@ -108,11 +137,32 @@ func main()  {
 	}
 
 	// читаем файл строки посылаем в канал
-	for j := 1; j <= 30; j++ {
-		lines <- DataLine { Id: j };
-		fmt.Println("sent line", j );
+	//for j := 1; j <= 30; j++ {
+	//	lines <- DataLine { Id: j };
+	//	fmt.Println("sent line", j );
+	//}
+
+	csvfile, err := os.Open(preferences().GetBasePath() + PATH_SEPARATOR + "input" + PATH_SEPARATOR + "41423731.csv" );
+	if err != nil {
+		log.Fatalln("Couldn't open the csv file", err)
 	}
-	close( lines );
+	defer csvfile.Close();
+
+	r := csv.NewReader( csvfile );
+	r.Comma = ';';
+	r.Comment = '#';
+	for j :=1; ; j++ {
+		records, err := r.Read()
+		if err == io.EOF {
+			break;
+		}
+		if err != nil {
+			logging( errorToLogging( err ) );
+		}
+		lines <- DataLine{ Id : j, Line: records };
+	}
+
+		close( lines );
 	fmt.Println("закрыли канал" )
 
 	waitGroup.Wait();
