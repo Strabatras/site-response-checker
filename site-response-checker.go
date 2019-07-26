@@ -2,12 +2,12 @@ package main
 
 import (
 	"./configuration"
+	"./data"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"sync"
 )
 
@@ -18,19 +18,6 @@ var (
 	WORKER_MAX		int										= 5;
 )
 
-// Результат запроса
-type Request struct {
-	Url 		string	;
-	StatusCode	int		;
-}
-
-// Данные строки
-type DataLine struct {
-	Id 					int			;
-	Line				[]string	;
-	RequestMain			Request		;
-	RequestAdditionals	[]Request	;
-}
 
 func init(){
 
@@ -75,41 +62,24 @@ func preferences() configuration.ConfigurationPreferencesInterface {
 	return CONFIGURATION.GetPreferences();
 }
 
-func matched( pattern string, text string ) bool {
-	matched, _ := regexp.Match( pattern, []byte( text ) );
-	if matched {
-		return true;
-	}
-	return false;
-}
-
-func prepareDataLine ( dataLine *DataLine ) {
-	if ( dataLine.Id == 40 ) {
-		pattern := `(http)|(https)://\w+\.\w{2,}`
-		for _, value := range dataLine.Line {
-			if ( matched( pattern, value ) ) {
-				fmt.Println( value );
-				fmt.Println( "" );
-			}
-		}
-	}
-}
-
-func worker( lines chan DataLine, waitGroup *sync.WaitGroup ) {
+func worker( lines chan data.Line, waitGroup *sync.WaitGroup ) {
 	defer waitGroup.Done()
 	for {
 		line, more := <-lines
 		if more {
+			// 1) разобрать строку
+			line.Prepare();
 			/*
-				1) разобрать строку
+
 				2) отправить запрос
 				3) получить данные
 				4) разобрать данные
 			 */
 
-			prepareDataLine( &line );
+			//prepareDataLine( &line );
 			//fmt.Println("DataLine", line );
 			//fmt.Println("received job => ", line.Id );
+
 		} else {
 			return;
 		}
@@ -130,39 +100,36 @@ func main()  {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add( WORKER_MAX );
 
-	lines := make( chan DataLine, WORKER_MAX );
+	lines := make( chan data.Line, WORKER_MAX );
 
 	for i := 0; i < WORKER_MAX; i++ {
 		go worker( lines, &waitGroup );
 	}
 
-	// читаем файл строки посылаем в канал
-	//for j := 1; j <= 30; j++ {
-	//	lines <- DataLine { Id: j };
-	//	fmt.Println("sent line", j );
-	//}
-
-	csvfile, err := os.Open(preferences().GetBasePath() + PATH_SEPARATOR + "input" + PATH_SEPARATOR + "41423731.csv" );
+	csvFile, err := os.Open(preferences().GetBasePath() + PATH_SEPARATOR + "input" + PATH_SEPARATOR + "41423731.csv" );
 	if err != nil {
 		log.Fatalln("Couldn't open the csv file", err)
 	}
-	defer csvfile.Close();
+	defer csvFile.Close();
 
-	r := csv.NewReader( csvfile );
+	r := csv.NewReader( csvFile );
 	r.Comma = ';';
 	r.Comment = '#';
 	for j :=1; ; j++ {
-		records, err := r.Read()
+		cells, err := r.Read()
 		if err == io.EOF {
 			break;
 		}
 		if err != nil {
 			logging( errorToLogging( err ) );
 		}
-		lines <- DataLine{ Id : j, Line: records };
+		data := data.Line{};
+		data.SetId( j );
+		data.SetCells( cells );
+		lines <- data;
 	}
 
-		close( lines );
+	close( lines );
 	fmt.Println("закрыли канал" )
 
 	waitGroup.Wait();
