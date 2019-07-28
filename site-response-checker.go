@@ -74,10 +74,11 @@ func worker( lines chan data.Line, waitGroup *sync.WaitGroup ) {
 				2) отправить запрос
 				3) получить данные
 				4) разобрать данные
+				5) Записать данные
 			 */
 
 			//prepareDataLine( &line );
-			//fmt.Println("DataLine", line );
+			//fmt.Println( line.GetFast() );
 			//fmt.Println("received job => ", line.Id );
 
 		} else {
@@ -130,8 +131,6 @@ func main()  {
 	}
 
 	close( lines );
-	fmt.Println("закрыли канал" )
-
 	waitGroup.Wait();
 
 	logging("======= STOP  Site Response Checker =======");
