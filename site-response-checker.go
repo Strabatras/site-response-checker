@@ -30,14 +30,13 @@ func csvFile() string {
 func prepareLineRequests(key int, cell string, line interfaces.Line) {
 	if (helpers.Matched(SEARCH_LINK_PATTERN, cell)) {
 		links := strings.Split(cell, "||");
-
 		for _, link := range links {
 			split := strings.Split(link, "|");
 			if (len(split) > 0) {
 				var request interfaces.Request = &request.Request{};
 				request.SetUrl(split[0]);
-				key := helpers.HashSHA1(request.GetUrl());
-				line.GetRequestList().SetRequest(key, request);
+				request.SetHash(helpers.HashSHA1(request.GetUrl()));
+				line.GetRequestList().SetRequest(request);
 			}
 		}
 
@@ -51,16 +50,23 @@ func prepareLine(line interfaces.Line) {
 	}
 }
 
-func worker(lines chan interfaces.Line, waitGroup *sync.WaitGroup) {
+func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	for {
 		line, more := <-lines
 		if more {
 			// 1) разобрать строку
 			prepareLine(line);
-			if (len(line.GetRequestList().GetRequests()) > 0) {
-fmt.Println("line.GetRequestList()", line.GetRequestList())
+			for _, request := range line.GetRequestList().GetRequests() {
+				if ( inProgress.ToObservation( request, line ) == false ){
+					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
+					fmt.Println( "Send GET request" );
+				}
+
 			}
+			//if (len(line.GetRequestList().GetRequests()) > 0) {
+			//		fmt.Println("line.GetRequestList()", line.GetRequestList().GetRequests())
+			//}
 			/*			if ( line.GetLink() != nil ) {
 							//sendRequest( line.GetLink(), line, inProgress );
 						}
@@ -98,8 +104,21 @@ func NewLine(id int, cells []string) interfaces.Line {
 	var line interfaces.Line = &data.Line{};
 	line.SetId(id);
 	line.SetCells(cells);
-	line.SetRequestList( NewRequestList() );
+	line.SetRequestList(NewRequestList());
 	return line;
+}
+
+func NewInProgress() interfaces.InProgress  {
+	var inProgress interfaces.InProgress = &request.InProgress{};
+	var checked interfaces.CheckedList = &data.CheckedList{};
+	var observation interfaces.Observation = &data.Observation{};
+
+	checked.Init();
+	observation.Init();
+
+	inProgress.SetCheckedList( checked );
+	inProgress.SetObservation( observation );
+	return inProgress;
 }
 
 func main() {
@@ -107,8 +126,11 @@ func main() {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
+
+	inProgress := NewInProgress();
+
 	for i := 0; i < WORKER_MAX; i++ {
-		go worker(lines, &waitGroup);
+		go worker(lines, inProgress, &waitGroup);
 	}
 
 	csvFile, err := os.Open(csvFile());
