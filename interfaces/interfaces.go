@@ -19,8 +19,10 @@ type Request interface {
 type RequestList interface {
 	Init();
 	SetRequest(request Request);
+	GetRequest(key int) Request;
 	GetRequests() []Request;
-	GetRelations(key string) []int;
+	GetRelation(key string) []int;
+	GetRelations() map[string][]int;
 }
 
 type CheckedList interface {

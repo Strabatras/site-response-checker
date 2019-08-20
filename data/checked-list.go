@@ -27,6 +27,7 @@ func (cl *CheckedList) Get(key string) interfaces.Request {
 }
 
 // возвращает true если ссылка ранее проверялась
+// tckb ccskrf ghjdthtyyf
 func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.Line, observation interfaces.Observation) bool {
 	cl.mx.Lock();
 	defer cl.mx.Unlock();

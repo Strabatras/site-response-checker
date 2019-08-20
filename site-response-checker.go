@@ -57,6 +57,15 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 		if more {
 			// 1) разобрать строку
 			prepareLine(line);
+			for _, relations := range line.GetRequestList().GetRelations() {
+				//fmt.Println( "KEY =>", key , " relations => " , relations , " request => " , line.GetRequestList().GetRequest(relations[0]))
+				if ( inProgress.ToObservation( line.GetRequestList().GetRequest(relations[0]), line ) == false ){
+					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
+					fmt.Println( "Send GET request" );
+				}
+			}
+			fmt.Println("=================")
+			/*
 			for _, request := range line.GetRequestList().GetRequests() {
 				if ( inProgress.ToObservation( request, line ) == false ){
 					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
@@ -64,6 +73,7 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 				}
 
 			}
+			*/
 			//if (len(line.GetRequestList().GetRequests()) > 0) {
 			//		fmt.Println("line.GetRequestList()", line.GetRequestList().GetRequests())
 			//}

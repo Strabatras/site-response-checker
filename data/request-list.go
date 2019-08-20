@@ -21,10 +21,18 @@ func (rl *RequestList) SetRequest(request interfaces.Request) {
 	rl.relations[request.GetHash()] = append(relations, index);
 }
 
+func (rl RequestList) GetRequest( key int ) interfaces.Request {
+	return rl.requests[ key ];
+}
+
 func (rl RequestList) GetRequests() []interfaces.Request {
 	return rl.requests;
 }
 
-func (rl RequestList) GetRelations(key string) []int {
+func (rl RequestList) GetRelation(key string) []int {
 	return rl.relations[key];
+}
+
+func (rl RequestList) GetRelations() map[string][]int {
+	return rl.relations;
 }
