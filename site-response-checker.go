@@ -58,12 +58,16 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 			// 1) разобрать строку
 			prepareLine(line);
 			for _, relations := range line.GetRequestList().GetRelations() {
-				//fmt.Println( "KEY =>", key , " relations => " , relations , " request => " , line.GetRequestList().GetRequest(relations[0]))
-				if ( inProgress.ToObservation( line.GetRequestList().GetRequest(relations[0]), line ) == false ){
+				request := line.GetRequestList().GetRequest(relations[0]);
+				// если запрос не выполнялся ранее
+				if ( inProgress.ToObservation( request, line ) == false ){
 					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
 					fmt.Println( "Send GET request" );
+					fmt.Println( "relations[0] => " , request);
+					//line.GetRequestList().DecrementInWork();
 				}
 			}
+			fmt.Println( line.GetRequestList().GetInWork());
 			fmt.Println("=================")
 			/*
 			for _, request := range line.GetRequestList().GetRequests() {

@@ -10,6 +10,8 @@ type Line interface {
 }
 
 type Request interface {
+	SetFinished();
+	GetFinished() bool;
 	SetHash(hash string);
 	GetHash() string;
 	SetUrl(url string);
@@ -18,6 +20,8 @@ type Request interface {
 
 type RequestList interface {
 	Init();
+	GetInWork() int;
+	DecrementInWork();
 	SetRequest(request Request);
 	GetRequest(key int) Request;
 	GetRequests() []Request;

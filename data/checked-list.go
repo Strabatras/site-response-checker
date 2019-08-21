@@ -26,13 +26,24 @@ func (cl *CheckedList) Get(key string) interfaces.Request {
 	return cl.data[ key ];
 }
 
-// возвращает true если ссылка ранее проверялась
-// tckb ccskrf ghjdthtyyf
+// возвращает true если ссылка проверялась ранее
+//
 func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.Line, observation interfaces.Observation) bool {
 	cl.mx.Lock();
 	defer cl.mx.Unlock();
-	if _, ok := cl.data[ request.GetHash() ]; ok {
-		observation.Set(request.GetHash(), line);
+	// ссылка проверялась ранее
+	if _request, ok := cl.data[ request.GetHash() ]; ok {
+		// запрос был проверен
+		if (_request.GetFinished()) {
+			// все связи по проверенному запросу получают статус закончено
+			// декремент счетчика 'в работе'
+			for _, relation := range line.GetRequestList().GetRelation(_request.GetHash()) {
+				line.GetRequestList().GetRequest(relation).SetFinished();
+				line.GetRequestList().DecrementInWork();
+			}
+		} else {
+			observation.Set(request.GetHash(), line);
+		}
 		return true;
 	}
 	cl.data[ request.GetHash() ] = request;
