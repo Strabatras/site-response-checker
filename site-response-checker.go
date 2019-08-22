@@ -9,9 +9,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
 );
 
 var (
@@ -51,7 +54,51 @@ func prepareLine(line interfaces.Line) {
 }
 
 func send(request interfaces.Request, line interfaces.Line, inProgress interfaces.InProgress){
+	var netTransport = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 5 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: 5 * time.Second,
+	}
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+		Transport: netTransport,
+	}
+	response, _ := netClient.Get(request.GetUrl());
+	defer response.Body.Close();
+	fmt.Println( "response => " , response.StatusCode);
+	fmt.Println( "response => " , response.ContentLength);
+	
+	for name, values := range response.Header {
+		// Loop over all values for the name.
+		for _, value := range values {
+			fmt.Println(name, value)
+		}
+	}
+	/*
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatalf("Couldn't parse response body. %+v", err)
+	}
 
+	log.Println("Response Body:", string(body))
+	 */
+	fmt.Println("+++++++++++++++++++++")
+	//http.HandleFunc(request.GetUrl(), handler);
+	//log.Fatal(http.ListenAndServe(request.GetUrl(), nil))
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "%s %s %s \n", r.Method, r.URL, r.Proto)
+	//Iterate over all header fields
+	for k, v := range r.Header {
+		fmt.Fprintf(w, "Header field %q, Value %q\n", k, v)
+	}
+
+	fmt.Fprintf(w, "Host = %q\n", r.Host)
+	fmt.Fprintf(w, "RemoteAddr= %q\n", r.RemoteAddr)
+	//Get value for a specified token
+	fmt.Fprintf(w, "\n\nFinding value of \"Accept\" %q", r.Header["Accept"])
 }
 
 func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroup *sync.WaitGroup) {
@@ -65,14 +112,15 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 				request := line.GetRequestList().GetRequest(relations[0]);
 				// если запрос не выполнялся ранее
 				if ( inProgress.ToObservation( request, line ) == false ){
-					//fmt.Println( "inProgress.ToObservation( request, line ) == false " );
+					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
 					//fmt.Println( "Send GET request" );
 					//fmt.Println( "relations[0] => " , request);
 					//line.GetRequestList().DecrementInWork();
+					send(request, line, inProgress);
 				}
 			}
-			fmt.Println( line.GetRequestList().GetInWork());
-			fmt.Println("=================")
+			//fmt.Println( line.GetRequestList().GetInWork());
+			//fmt.Println("=================")
 			/*
 			for _, request := range line.GetRequestList().GetRequests() {
 				if ( inProgress.ToObservation( request, line ) == false ){
