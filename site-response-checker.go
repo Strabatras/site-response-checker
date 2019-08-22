@@ -50,6 +50,10 @@ func prepareLine(line interfaces.Line) {
 	}
 }
 
+func send(request interfaces.Request, line interfaces.Line, inProgress interfaces.InProgress){
+
+}
+
 func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	for {
@@ -61,9 +65,9 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 				request := line.GetRequestList().GetRequest(relations[0]);
 				// если запрос не выполнялся ранее
 				if ( inProgress.ToObservation( request, line ) == false ){
-					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
-					fmt.Println( "Send GET request" );
-					fmt.Println( "relations[0] => " , request);
+					//fmt.Println( "inProgress.ToObservation( request, line ) == false " );
+					//fmt.Println( "Send GET request" );
+					//fmt.Println( "relations[0] => " , request);
 					//line.GetRequestList().DecrementInWork();
 				}
 			}

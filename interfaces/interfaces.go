@@ -24,6 +24,7 @@ type RequestList interface {
 	DecrementInWork();
 	SetRequest(request Request);
 	GetRequest(key int) Request;
+	SetRequests(requests []Request);
 	GetRequests() []Request;
 	GetRelation(key string) []int;
 	GetRelations() map[string][]int;
@@ -31,19 +32,19 @@ type RequestList interface {
 
 type CheckedList interface {
 	Init();
-	Observation( request Request, line Line, observation Observation ) bool;
+	Observation(request Request, line Line, observation Observation) bool;
 }
 
 type Observation interface {
 	Init();
-	Set( key string, line Line );
-	Get( key string ) []Line;
+	Set(key string, line Line);
+	Get(key string) []Line;
 }
 
 type InProgress interface {
-	SetCheckedList( checked CheckedList );
+	SetCheckedList(checked CheckedList);
 	GetCheckedList() CheckedList;
-	SetObservation( observation Observation );
+	SetObservation(observation Observation);
 	GetObservation() Observation;
-	ToObservation( url Request, line Line ) bool;
+	ToObservation(request Request, line Line) bool;
 }

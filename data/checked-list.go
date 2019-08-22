@@ -35,12 +35,14 @@ func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.L
 	if _request, ok := cl.data[ request.GetHash() ]; ok {
 		// запрос был проверен
 		if (_request.GetFinished()) {
+			requests := line.GetRequestList().GetRequests();
 			// все связи по проверенному запросу получают статус закончено
 			// декремент счетчика 'в работе'
 			for _, relation := range line.GetRequestList().GetRelation(_request.GetHash()) {
-				line.GetRequestList().GetRequest(relation).SetFinished();
+				requests[relation] = _request;
 				line.GetRequestList().DecrementInWork();
 			}
+			line.GetRequestList().SetRequests(requests);
 		} else {
 			observation.Set(request.GetHash(), line);
 		}

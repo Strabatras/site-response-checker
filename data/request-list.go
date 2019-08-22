@@ -7,7 +7,7 @@ import (
 type RequestList struct {
 	requests  []interfaces.Request;
 	relations map[string][]int;
-	in_work int;
+	in_work   int;
 }
 
 func (rl *RequestList) Init() {
@@ -20,19 +20,22 @@ func (rl RequestList) GetInWork() int {
 }
 
 func (rl *RequestList) DecrementInWork() {
-	rl.in_work = rl.in_work -1;
+	rl.in_work = rl.in_work - 1;
 }
 
 func (rl *RequestList) SetRequest(request interfaces.Request) {
 	rl.requests = append(rl.requests, request);
 	relations := rl.relations[request.GetHash()];
-	rl.in_work = len(rl.requests);
-	index := (rl.in_work - 1);
+	index := (len(rl.requests) - 1);
 	rl.relations[request.GetHash()] = append(relations, index);
 }
 
-func (rl RequestList) GetRequest( key int ) interfaces.Request {
+func (rl RequestList) GetRequest(key int) interfaces.Request {
 	return rl.requests[ key ];
+}
+
+func (rl *RequestList) SetRequests(requests []interfaces.Request) {
+	rl.requests = requests;
 }
 
 func (rl RequestList) GetRequests() []interfaces.Request {
