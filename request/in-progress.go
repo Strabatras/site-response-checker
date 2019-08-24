@@ -9,22 +9,26 @@ type InProgress struct {
 	observation interfaces.Observation;
 }
 
-func ( ip *InProgress ) SetCheckedList( checked interfaces.CheckedList )  {
+func (ip *InProgress) SetCheckedList(checked interfaces.CheckedList) {
 	ip.checkedList = checked;
 }
 
-func ( ip *InProgress ) GetCheckedList( ) interfaces.CheckedList  {
+func (ip InProgress) GetCheckedList() interfaces.CheckedList {
 	return ip.checkedList;
 }
 
-func ( ip *InProgress ) SetObservation( observation interfaces.Observation )  {
+func (ip *InProgress) SetObservation(observation interfaces.Observation) {
 	ip.observation = observation;
 }
 
-func ( ip *InProgress ) GetObservation( ) interfaces.Observation  {
+func (ip InProgress) GetObservation() interfaces.Observation {
 	return ip.observation;
 }
 
-func ( ip *InProgress ) ToObservation( request interfaces.Request, line interfaces.Line ) bool {
-	return ip.GetCheckedList().Observation( request, line, ip.GetObservation() );
+func (ip *InProgress) ToObservation(request interfaces.Request, line interfaces.Line) bool {
+	return ip.GetCheckedList().Observation(request, line, ip.GetObservation());
+}
+
+func (ip *InProgress) FromObservation(request interfaces.Request) {
+	ip.GetCheckedList().TakeOffObservation(request, ip.GetObservation());
 }

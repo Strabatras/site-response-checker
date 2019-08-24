@@ -1,10 +1,10 @@
 package request;
 
 type Request struct {
-	finished           bool;
-	hash               string;
-	url                string;
-	responseStatusCode int;
+	finished   bool;
+	hash       string;
+	url        string;
+	statusCode int;
 }
 
 func (r *Request) SetFinished() {
@@ -30,10 +30,10 @@ func (r Request) GetUrl() string {
 	return r.url;
 }
 
-func (r *Request) SetResponseStatusCode(code int) {
-	r.responseStatusCode = code;
+func (r *Request) SetStatusCode(statusCode int) {
+	r.statusCode = statusCode;
 }
 
-func (r Request) GetResponseStatusCode() int {
-	return r.responseStatusCode;
+func (r Request) GetStatusCode() int {
+	return r.statusCode;
 }

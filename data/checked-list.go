@@ -2,6 +2,7 @@ package data;
 
 import (
 	"../interfaces"
+	"fmt"
 	"sync"
 )
 
@@ -50,4 +51,24 @@ func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.L
 	}
 	cl.data[ request.GetHash() ] = request;
 	return false;
+}
+
+func (cl *CheckedList) TakeOffObservation(request interfaces.Request, observation interfaces.Observation) {
+	//fmt.Println("request => ", request);
+	lines := observation.Get(request.GetHash());
+	observation.Forget(request.GetHash());
+	for _, line := range lines {
+		requests := line.GetRequestList().GetRequests();
+		// все связи по проверенному запросу получают статус закончено
+		// декремент счетчика 'в работе'
+		for _, relation := range line.GetRequestList().GetRelation(request.GetHash()) {
+			requests[relation] = request;
+			line.GetRequestList().DecrementInWork();
+		}
+		line.GetRequestList().SetRequests(requests);
+		if ( line.GetRequestList().GetInWork() == 0 ) {
+			fmt.Println( "TakeOffObservation() => ToWriteLine" );
+		}
+	}
+	//fmt.Println("_observation =>", _observation);
 }

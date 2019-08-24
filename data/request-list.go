@@ -20,7 +20,10 @@ func (rl RequestList) GetInWork() int {
 }
 
 func (rl *RequestList) DecrementInWork() {
-	rl.in_work = rl.in_work - 1;
+	rl.in_work--;
+}
+func (rl *RequestList) IncrementInWork() {
+	rl.in_work++;
 }
 
 func (rl *RequestList) SetRequest(request interfaces.Request) {

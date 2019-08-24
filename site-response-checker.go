@@ -18,7 +18,8 @@ import (
 );
 
 var (
-	WORKER_MAX                 = 5;
+	WORKER_MAX          int    = 5;
+	ATTEMPT_REQUEST_MAX int    = 3;
 	PATH_SEPARATOR      string = string(os.PathSeparator);
 	SEARCH_LINK_PATTERN string = `(http)|(https)://\w+\.\w{2,}`;
 );
@@ -35,11 +36,12 @@ func prepareLineRequests(key int, cell string, line interfaces.Line) {
 		links := strings.Split(cell, "||");
 		for _, link := range links {
 			split := strings.Split(link, "|");
-			if (len(split) > 0) {
+			if ( (len(split) > 0) && (split[0] != "") ) {
 				var request interfaces.Request = &request.Request{};
-				request.SetUrl(split[0]);
+				request.SetUrl( split[0] );
 				request.SetHash(helpers.HashSHA1(request.GetUrl()));
 				line.GetRequestList().SetRequest(request);
+				line.GetRequestList().IncrementInWork();
 			}
 		}
 
@@ -53,52 +55,38 @@ func prepareLine(line interfaces.Line) {
 	}
 }
 
-func send(request interfaces.Request, line interfaces.Line, inProgress interfaces.InProgress){
-	var netTransport = &http.Transport{
+func send(request interfaces.Request, netTransport http.RoundTripper, attempt int) (*http.Response, bool) {
+
+	var netClient = &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: netTransport,
+	}
+	response, ok := netClient.Get(request.GetUrl());
+	defer response.Body.Close();
+
+	if ok == nil {
+		return response, true;
+	}
+
+	if ( ATTEMPT_REQUEST_MAX > attempt ) {
+		fmt.Println( "attempt > ", attempt );
+		return send(request, netTransport, attempt+1);
+	}
+	return response, false;
+}
+
+func sendRequest(request interfaces.Request) {
+	response, ok := send(request, &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout: 5 * time.Second,
 		}).DialContext,
 		TLSHandshakeTimeout: 5 * time.Second,
+	}, 0);
+	request.SetFinished();
+	if ok {
+		request.SetStatusCode(response.StatusCode)
 	}
-	var netClient = &http.Client{
-		Timeout: time.Second * 10,
-		Transport: netTransport,
-	}
-	response, _ := netClient.Get(request.GetUrl());
-	defer response.Body.Close();
-	fmt.Println( "response => " , response.StatusCode);
-	fmt.Println( "response => " , response.ContentLength);
-	
-	for name, values := range response.Header {
-		// Loop over all values for the name.
-		for _, value := range values {
-			fmt.Println(name, value)
-		}
-	}
-	/*
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatalf("Couldn't parse response body. %+v", err)
-	}
-
-	log.Println("Response Body:", string(body))
-	 */
-	fmt.Println("+++++++++++++++++++++")
-	//http.HandleFunc(request.GetUrl(), handler);
-	//log.Fatal(http.ListenAndServe(request.GetUrl(), nil))
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%s %s %s \n", r.Method, r.URL, r.Proto)
-	//Iterate over all header fields
-	for k, v := range r.Header {
-		fmt.Fprintf(w, "Header field %q, Value %q\n", k, v)
-	}
-
-	fmt.Fprintf(w, "Host = %q\n", r.Host)
-	fmt.Fprintf(w, "RemoteAddr= %q\n", r.RemoteAddr)
-	//Get value for a specified token
-	fmt.Fprintf(w, "\n\nFinding value of \"Accept\" %q", r.Header["Accept"])
+	fmt.Println("OK => ", ok)
 }
 
 func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroup *sync.WaitGroup) {
@@ -106,52 +94,20 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 	for {
 		line, more := <-lines
 		if more {
-			// 1) разобрать строку
 			prepareLine(line);
+			// проверяем себя и если есть подобные в строке
 			for _, relations := range line.GetRequestList().GetRelations() {
 				request := line.GetRequestList().GetRequest(relations[0]);
 				// если запрос не выполнялся ранее
-				if ( inProgress.ToObservation( request, line ) == false ){
-					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
-					//fmt.Println( "Send GET request" );
-					//fmt.Println( "relations[0] => " , request);
-					//line.GetRequestList().DecrementInWork();
-					send(request, line, inProgress);
+				if (inProgress.ToObservation(request, line) == false) {
+					sendRequest(request);
+					inProgress.FromObservation(request);
+					return;
+				}
+				if ( line.GetRequestList().GetInWork() == 0 ) {
+					fmt.Println( "worker() => ToWriteLine" );
 				}
 			}
-			//fmt.Println( line.GetRequestList().GetInWork());
-			//fmt.Println("=================")
-			/*
-			for _, request := range line.GetRequestList().GetRequests() {
-				if ( inProgress.ToObservation( request, line ) == false ){
-					fmt.Println( "inProgress.ToObservation( request, line ) == false " );
-					fmt.Println( "Send GET request" );
-				}
-
-			}
-			*/
-			//if (len(line.GetRequestList().GetRequests()) > 0) {
-			//		fmt.Println("line.GetRequestList()", line.GetRequestList().GetRequests())
-			//}
-			/*			if ( line.GetLink() != nil ) {
-							//sendRequest( line.GetLink(), line, inProgress );
-						}
-
-						if ( line.GetFast() != nil ) {
-							for _, request := range line.GetFast(){
-								sendRequest( request, line, inProgress );
-							}
-						}*/
-
-			//fmt.Println("line.GetLink()", line.GetLink(), line.GetFast() )
-
-			/*
-				2) отправить запрос
-				3) получить данные
-				4) разобрать данные
-				5) Записать данные
-			*/
-
 		} else {
 			return;
 		}
@@ -174,16 +130,14 @@ func NewLine(id int, cells []string) interfaces.Line {
 	return line;
 }
 
-func NewInProgress() interfaces.InProgress  {
+func NewInProgress() interfaces.InProgress {
 	var inProgress interfaces.InProgress = &request.InProgress{};
 	var checked interfaces.CheckedList = &data.CheckedList{};
 	var observation interfaces.Observation = &data.Observation{};
-
 	checked.Init();
 	observation.Init();
-
-	inProgress.SetCheckedList( checked );
-	inProgress.SetObservation( observation );
+	inProgress.SetCheckedList(checked);
+	inProgress.SetObservation(observation);
 	return inProgress;
 }
 
@@ -192,9 +146,7 @@ func main() {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
-
 	inProgress := NewInProgress();
-
 	for i := 0; i < WORKER_MAX; i++ {
 		go worker(lines, inProgress, &waitGroup);
 	}

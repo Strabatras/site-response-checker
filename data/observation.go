@@ -26,3 +26,9 @@ func (o *Observation) Get(key string) []interfaces.Line {
 	defer o.mx.Unlock();
 	return o.data[ key ];
 }
+
+func (o *Observation) Forget(key string) {
+	o.mx.Lock();
+	defer o.mx.Unlock();
+	delete(o.data, key);
+}

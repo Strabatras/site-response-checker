@@ -16,12 +16,15 @@ type Request interface {
 	GetHash() string;
 	SetUrl(url string);
 	GetUrl() string;
+	SetStatusCode(statusCode int);
+	GetStatusCode() int;
 }
 
 type RequestList interface {
 	Init();
 	GetInWork() int;
 	DecrementInWork();
+	IncrementInWork();
 	SetRequest(request Request);
 	GetRequest(key int) Request;
 	SetRequests(requests []Request);
@@ -33,12 +36,14 @@ type RequestList interface {
 type CheckedList interface {
 	Init();
 	Observation(request Request, line Line, observation Observation) bool;
+	TakeOffObservation(request Request, observation Observation);
 }
 
 type Observation interface {
 	Init();
 	Set(key string, line Line);
 	Get(key string) []Line;
+	Forget(key string);
 }
 
 type InProgress interface {
@@ -47,4 +52,5 @@ type InProgress interface {
 	SetObservation(observation Observation);
 	GetObservation() Observation;
 	ToObservation(request Request, line Line) bool;
+	FromObservation(request Request);
 }
