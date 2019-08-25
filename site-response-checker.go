@@ -84,13 +84,12 @@ func sendRequest(request interfaces.Request) {
 	}, 0);
 	request.SetFinished();
 	if ok {
-		request.SetStatusCode(response.StatusCode)
+		request.SetStatusCode(response.StatusCode);
 	}
-	fmt.Println("OK => ", ok)
 }
 
-func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
+func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, writer interfaces.Writer, waitGroupWorker *sync.WaitGroup) {
+	defer waitGroupWorker.Done();
 	for {
 		line, more := <-lines
 		if more {
@@ -113,6 +112,10 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 		}
 	}
 
+}
+
+func lineWriter(line interfaces.Line, writer interfaces.Writer)  {
+	defer writer.GetWaitGroup().Done();
 }
 
 func NewRequestList() interfaces.RequestList {
@@ -141,14 +144,30 @@ func NewInProgress() interfaces.InProgress {
 	return inProgress;
 }
 
+func NewWriter() interfaces.Writer  {
+	var writer interfaces.Writer = &data.Writer{};
+
+	return writer;
+}
+
 func main() {
 	fmt.Println("======= START Site Response Checker =======");
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(WORKER_MAX);
+	var waitGroupWorker sync.WaitGroup
+	waitGroupWorker.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
+
+	writer := NewWriter();
+	//fmt.Println(reflect.TypeOf(lines))
+
+	fmt.Println("writer => ", writer);
+
+	//var waitGroupWriter sync.WaitGroup
+	//waitGroupWriter.Add(WORKER_MAX);
+	//writer := make(chan interfaces.Line, WORKER_MAX);
+
 	inProgress := NewInProgress();
 	for i := 0; i < WORKER_MAX; i++ {
-		go worker(lines, inProgress, &waitGroup);
+		go worker(lines, inProgress, writer, &waitGroupWorker);
 	}
 
 	csvFile, err := os.Open(csvFile());
@@ -168,11 +187,17 @@ func main() {
 		if err != nil {
 			fmt.Println(err);
 		}
+		/*
 		data := NewLine(j, cells);
 		lines <- data;
+		*/
+		lines <- NewLine(j, cells);
 	}
 
 	close(lines);
-	waitGroup.Wait();
+	waitGroupWorker.Wait();
+	//close(writer);
+	writer.GetWaitGroup().Wait();
+	//waitGroupWriter.Wait();
 	fmt.Println("======= STOP  Site Response Checker =======");
 }

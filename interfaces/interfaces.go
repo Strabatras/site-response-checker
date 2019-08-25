@@ -1,5 +1,7 @@
 package interfaces;
 
+import "sync"
+
 type Line interface {
 	SetId(id int);
 	GetId() int;
@@ -53,4 +55,8 @@ type InProgress interface {
 	GetObservation() Observation;
 	ToObservation(request Request, line Line) bool;
 	FromObservation(request Request);
+}
+
+type Writer interface {
+	GetWaitGroup() sync.WaitGroup;
 }
