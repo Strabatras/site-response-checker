@@ -88,7 +88,7 @@ func sendRequest(request interfaces.Request) {
 	}
 }
 
-func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, writer interfaces.Writer, waitGroupWorker *sync.WaitGroup) {
+func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroupWorker *sync.WaitGroup, writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup) {
 	defer waitGroupWorker.Done();
 	for {
 		line, more := <-lines
@@ -100,7 +100,7 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, writer
 				// если запрос не выполнялся ранее
 				if (inProgress.ToObservation(request, line) == false) {
 					sendRequest(request);
-					inProgress.FromObservation(request);
+					inProgress.FromObservation(request, writer, waitGroupWriter);
 					return;
 				}
 				if ( line.GetRequestList().GetInWork() == 0 ) {
@@ -112,10 +112,6 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, writer
 		}
 	}
 
-}
-
-func lineWriter(line interfaces.Line, writer interfaces.Writer)  {
-	defer writer.GetWaitGroup().Done();
 }
 
 func NewRequestList() interfaces.RequestList {
@@ -144,30 +140,18 @@ func NewInProgress() interfaces.InProgress {
 	return inProgress;
 }
 
-func NewWriter() interfaces.Writer  {
-	var writer interfaces.Writer = &data.Writer{};
-
-	return writer;
-}
-
 func main() {
 	fmt.Println("======= START Site Response Checker =======");
 	var waitGroupWorker sync.WaitGroup
 	waitGroupWorker.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
 
-	writer := NewWriter();
-	//fmt.Println(reflect.TypeOf(lines))
-
-	fmt.Println("writer => ", writer);
-
-	//var waitGroupWriter sync.WaitGroup
-	//waitGroupWriter.Add(WORKER_MAX);
-	//writer := make(chan interfaces.Line, WORKER_MAX);
+	var waitGroupWriter  sync.WaitGroup;
+	writer := make(chan interfaces.Line);
 
 	inProgress := NewInProgress();
 	for i := 0; i < WORKER_MAX; i++ {
-		go worker(lines, inProgress, writer, &waitGroupWorker);
+		go worker(lines, inProgress, &waitGroupWorker, writer, &waitGroupWriter);
 	}
 
 	csvFile, err := os.Open(csvFile());
@@ -187,17 +171,14 @@ func main() {
 		if err != nil {
 			fmt.Println(err);
 		}
-		/*
-		data := NewLine(j, cells);
-		lines <- data;
-		*/
 		lines <- NewLine(j, cells);
 	}
 
 	close(lines);
 	waitGroupWorker.Wait();
-	//close(writer);
-	writer.GetWaitGroup().Wait();
-	//waitGroupWriter.Wait();
+
+	close(writer);
+	waitGroupWriter.Wait();
+
 	fmt.Println("======= STOP  Site Response Checker =======");
 }
