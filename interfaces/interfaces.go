@@ -38,7 +38,7 @@ type RequestList interface {
 type CheckedList interface {
 	Init();
 	Observation(request Request, line Line, observation Observation) bool;
-	TakeOffObservation(request Request, writer chan Line, waitGroupWriter *sync.WaitGroup, observation Observation);
+	TakeOffObservation(request Request, lineWriter LineWriter, observation Observation);
 }
 
 type Observation interface {
@@ -54,5 +54,12 @@ type InProgress interface {
 	SetObservation(observation Observation);
 	GetObservation() Observation;
 	ToObservation(request Request, line Line) bool;
-	FromObservation(request Request, writer chan Line, waitGroupWriter *sync.WaitGroup);
+	FromObservation(request Request, lineWriter LineWriter);
+}
+
+type LineWriter interface {
+	SetWaitGroup( waitGroup *sync.WaitGroup );
+	GetWaitGroup() *sync.WaitGroup;
+	SetChanLine(chanLine chan Line);
+	GetChanLine() chan Line
 }

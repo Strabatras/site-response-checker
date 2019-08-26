@@ -2,7 +2,7 @@ package request;
 
 import (
 	"../interfaces"
-	"sync"
+	//"sync"
 )
 
 type InProgress struct {
@@ -30,6 +30,6 @@ func (ip *InProgress) ToObservation(request interfaces.Request, line interfaces.
 	return ip.GetCheckedList().Observation(request, line, ip.GetObservation());
 }
 
-func (ip *InProgress) FromObservation(request interfaces.Request, writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup) {
-	ip.GetCheckedList().TakeOffObservation(request, writer, waitGroupWriter, ip.GetObservation());
+func (ip *InProgress) FromObservation(request interfaces.Request, lineWriter interfaces.LineWriter) {
+	ip.GetCheckedList().TakeOffObservation(request, lineWriter, ip.GetObservation());
 }

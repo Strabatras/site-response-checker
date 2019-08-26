@@ -10,11 +10,12 @@ type LineWriter struct {
 	chanLine chan interfaces.Line;
 }
 
-func (lw *LineWriter) SetWaitGroup( waitGroup sync.WaitGroup )  {
-	lw.waitGroup = waitGroup;
+func (lw *LineWriter) SetWaitGroup( waitGroup *sync.WaitGroup )  {
+	lw.waitGroup = *waitGroup;
 }
-func (lw LineWriter) GetWaitGroup() sync.WaitGroup {
-	return lw.waitGroup;
+
+func (lw *LineWriter) GetWaitGroup() *sync.WaitGroup {
+	return &lw.waitGroup;
 }
 
 func (lw *LineWriter) SetChanLine(chanLine chan interfaces.Line)  {

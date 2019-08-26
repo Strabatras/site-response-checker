@@ -88,7 +88,7 @@ func sendRequest(request interfaces.Request) {
 	}
 }
 
-func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroupWorker *sync.WaitGroup, writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup) {
+func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroupWorker *sync.WaitGroup, lineWriter interfaces.LineWriter) {
 	defer waitGroupWorker.Done();
 	for {
 		line, more := <-lines
@@ -100,7 +100,7 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 				// если запрос не выполнялся ранее
 				if (inProgress.ToObservation(request, line) == false) {
 					sendRequest(request);
-					inProgress.FromObservation(request, writer, waitGroupWriter);
+					inProgress.FromObservation(request, lineWriter);
 					return;
 				}
 				if ( line.GetRequestList().GetInWork() == 0 ) {
@@ -140,18 +140,25 @@ func NewInProgress() interfaces.InProgress {
 	return inProgress;
 }
 
+func NewLineWriter() interfaces.LineWriter {
+	var waitGroupWriter  sync.WaitGroup;
+	var lineWriter interfaces.LineWriter = &data.LineWriter{};
+	lineWriter.SetWaitGroup(&waitGroupWriter);
+	lineWriter.SetChanLine(make(chan interfaces.Line));
+
+	return lineWriter;
+}
 func main() {
 	fmt.Println("======= START Site Response Checker =======");
 	var waitGroupWorker sync.WaitGroup
 	waitGroupWorker.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
 
-	var waitGroupWriter  sync.WaitGroup;
-	writer := make(chan interfaces.Line);
+	lineWriter := NewLineWriter();
 
 	inProgress := NewInProgress();
 	for i := 0; i < WORKER_MAX; i++ {
-		go worker(lines, inProgress, &waitGroupWorker, writer, &waitGroupWriter);
+		go worker(lines, inProgress, &waitGroupWorker, lineWriter);
 	}
 
 	csvFile, err := os.Open(csvFile());
@@ -177,8 +184,9 @@ func main() {
 	close(lines);
 	waitGroupWorker.Wait();
 
-	close(writer);
-	waitGroupWriter.Wait();
+	close(lineWriter.GetChanLine());
+	//waitGroupWriter.Wait();
+	lineWriter.GetWaitGroup().Wait();
 
 	fmt.Println("======= STOP  Site Response Checker =======");
 }

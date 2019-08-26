@@ -53,7 +53,7 @@ func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.L
 	return false;
 }
 
-func lineWriter(writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup)  {
+func _lineWriter(writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup)  {
 	defer waitGroupWriter.Done();
 	for {
 		line, more := <-writer
@@ -65,7 +65,7 @@ func lineWriter(writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup)  {
 	}
 }
 
-func (cl *CheckedList) TakeOffObservation(request interfaces.Request, writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup, observation interfaces.Observation) {
+func (cl *CheckedList) TakeOffObservation(request interfaces.Request, lineWriter interfaces.LineWriter, observation interfaces.Observation) {
 	lines := observation.Get(request.GetHash());
 	observation.Forget(request.GetHash());
 	for _, line := range lines {
@@ -78,9 +78,9 @@ func (cl *CheckedList) TakeOffObservation(request interfaces.Request, writer cha
 		}
 		line.GetRequestList().SetRequests(requests);
 		if ( line.GetRequestList().GetInWork() == 0 ) {
-			waitGroupWriter.Add(1);
-			go lineWriter(writer, waitGroupWriter);
-			writer <- line;
+			lineWriter.GetWaitGroup().Add(1);
+			go _lineWriter(lineWriter.GetChanLine(), lineWriter.GetWaitGroup());
+			lineWriter.GetChanLine() <- line;
 		}
 	}
 }
