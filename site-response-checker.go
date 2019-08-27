@@ -24,8 +24,11 @@ var (
 	SEARCH_LINK_PATTERN string = `(http)|(https)://\w+\.\w{2,}`;
 );
 
-func csvFile() string {
+func inputFile() string {
 	return "/Users/dmd/Documents/temp/site-response-checker" + PATH_SEPARATOR + "input" + PATH_SEPARATOR + "41423731.csv";
+}
+func outputFile() string {
+	return "/Users/dmd/Documents/temp/site-response-checker" + PATH_SEPARATOR + "output" + PATH_SEPARATOR + "41423731.csv";
 }
 
 // Разбор строки с ссылками
@@ -140,34 +143,50 @@ func NewInProgress() interfaces.InProgress {
 	return inProgress;
 }
 
-func NewLineToOut() interfaces.LineToOut {
+func NewLineToOut( writer *csv.Writer) interfaces.LineToOut {
 	var waitGroupWriter  sync.WaitGroup;
 	var lineToOut interfaces.LineToOut = &data.LineToOut{};
+	var fileWriter interfaces.FileWriter = &data.FileWriter{};
+	fileWriter.SetWriter(writer);
 	lineToOut.SetWaitGroup(&waitGroupWriter);
 	lineToOut.SetChanLine(make(chan interfaces.Line));
+	lineToOut.SetFileWriter(fileWriter);
+
 	return lineToOut;
 }
 
 func main() {
 	fmt.Println("======= START Site Response Checker =======");
+
+	inputFile, err := os.Open(inputFile());
+	if err != nil {
+		// TODO обработать фатал
+		log.Fatalln("Couldn't open the csv file", err);
+	}
+	defer inputFile.Close();
+
+	outputFile, err := os.Create(outputFile())
+	if err != nil {
+		// TODO обработать фатал
+		log.Fatalln("Couldn't write the csv file", err);
+	}
+	defer outputFile.Close()
+
+	writer := csv.NewWriter(outputFile)
+	defer writer.Flush()
+
+	lineToOut := NewLineToOut(writer);
+
 	var waitGroupWorker sync.WaitGroup
 	waitGroupWorker.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
-
-	lineToOut := NewLineToOut();
 
 	inProgress := NewInProgress();
 	for i := 0; i < WORKER_MAX; i++ {
 		go worker(lines, inProgress, &waitGroupWorker, lineToOut);
 	}
 
-	csvFile, err := os.Open(csvFile());
-	if err != nil {
-		// TODO обработать фатал
-		log.Fatalln("Couldn't open the csv file", err);
-	}
-	defer csvFile.Close();
-	r := csv.NewReader(csvFile);
+	r := csv.NewReader(inputFile);
 	r.Comma = ';';
 	r.Comment = '#';
 	for j := 1; ; j++ {
@@ -185,7 +204,6 @@ func main() {
 	waitGroupWorker.Wait();
 
 	close(lineToOut.GetChanLine());
-	//waitGroupWriter.Wait();
 	lineToOut.GetWaitGroup().Wait();
 
 	fmt.Println("======= STOP  Site Response Checker =======");

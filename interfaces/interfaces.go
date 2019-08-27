@@ -1,6 +1,9 @@
 package interfaces;
 
-import "sync"
+import (
+	"encoding/csv"
+	"sync"
+)
 
 type Line interface {
 	SetId(id int);
@@ -58,8 +61,15 @@ type InProgress interface {
 }
 
 type LineToOut interface {
-	SetWaitGroup( waitGroup *sync.WaitGroup );
+	SetWaitGroup(waitGroup *sync.WaitGroup);
 	GetWaitGroup() *sync.WaitGroup;
 	SetChanLine(chanLine chan Line);
-	GetChanLine() chan Line
+	GetChanLine() chan Line;
+	SetFileWriter(fileWriter FileWriter);
+	GetFileWriter() FileWriter;
+}
+
+type FileWriter interface {
+	SetWriter(writer *csv.Writer);
+	WriteLine(line []string);
 }

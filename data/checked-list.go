@@ -53,12 +53,13 @@ func (cl *CheckedList) Observation(request interfaces.Request, line interfaces.L
 	return false;
 }
 
-func _lineWriter(writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup)  {
+func _lineWriter(writer chan interfaces.Line, waitGroupWriter *sync.WaitGroup, fileWriter interfaces.FileWriter)  {
 	defer waitGroupWriter.Done();
 	for {
 		line, more := <-writer
 		if more {
 			fmt.Println("LINE => ", line);
+			fileWriter.WriteLine(line.GetCells());
 		} else {
 			return;
 		}
@@ -79,7 +80,7 @@ func (cl *CheckedList) TakeOffObservation(request interfaces.Request, lineToOut 
 		line.GetRequestList().SetRequests(requests);
 		if ( line.GetRequestList().GetInWork() == 0 ) {
 			lineToOut.GetWaitGroup().Add(1);
-			go _lineWriter(lineToOut.GetChanLine(), lineToOut.GetWaitGroup());
+			go _lineWriter(lineToOut.GetChanLine(), lineToOut.GetWaitGroup(), lineToOut.GetFileWriter());
 			lineToOut.GetChanLine() <- line;
 		}
 	}
