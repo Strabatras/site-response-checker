@@ -30,6 +30,6 @@ func (ip *InProgress) ToObservation(request interfaces.Request, line interfaces.
 	return ip.GetCheckedList().Observation(request, line, ip.GetObservation());
 }
 
-func (ip *InProgress) FromObservation(request interfaces.Request, lineWriter interfaces.LineWriter) {
-	ip.GetCheckedList().TakeOffObservation(request, lineWriter, ip.GetObservation());
+func (ip *InProgress) FromObservation(request interfaces.Request, lineToOut interfaces.LineToOut) {
+	ip.GetCheckedList().TakeOffObservation(request, lineToOut, ip.GetObservation());
 }

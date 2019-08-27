@@ -88,7 +88,7 @@ func sendRequest(request interfaces.Request) {
 	}
 }
 
-func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroupWorker *sync.WaitGroup, lineWriter interfaces.LineWriter) {
+func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGroupWorker *sync.WaitGroup, lineToOut interfaces.LineToOut) {
 	defer waitGroupWorker.Done();
 	for {
 		line, more := <-lines
@@ -100,12 +100,12 @@ func worker(lines chan interfaces.Line, inProgress interfaces.InProgress, waitGr
 				// если запрос не выполнялся ранее
 				if (inProgress.ToObservation(request, line) == false) {
 					sendRequest(request);
-					inProgress.FromObservation(request, lineWriter);
+					inProgress.FromObservation(request, lineToOut);
 					return;
 				}
-				if ( line.GetRequestList().GetInWork() == 0 ) {
-					fmt.Println( "worker() => ToWriteLine" );
-				}
+			}
+			if ( line.GetRequestList().GetInWork() == 0 ) {
+				fmt.Println( "worker( Header ) => ToWriteLine => ", line.GetId() );
 			}
 		} else {
 			return;
@@ -140,25 +140,25 @@ func NewInProgress() interfaces.InProgress {
 	return inProgress;
 }
 
-func NewLineWriter() interfaces.LineWriter {
+func NewLineToOut() interfaces.LineToOut {
 	var waitGroupWriter  sync.WaitGroup;
-	var lineWriter interfaces.LineWriter = &data.LineWriter{};
-	lineWriter.SetWaitGroup(&waitGroupWriter);
-	lineWriter.SetChanLine(make(chan interfaces.Line));
-
-	return lineWriter;
+	var lineToOut interfaces.LineToOut = &data.LineToOut{};
+	lineToOut.SetWaitGroup(&waitGroupWriter);
+	lineToOut.SetChanLine(make(chan interfaces.Line));
+	return lineToOut;
 }
+
 func main() {
 	fmt.Println("======= START Site Response Checker =======");
 	var waitGroupWorker sync.WaitGroup
 	waitGroupWorker.Add(WORKER_MAX);
 	lines := make(chan interfaces.Line, WORKER_MAX);
 
-	lineWriter := NewLineWriter();
+	lineToOut := NewLineToOut();
 
 	inProgress := NewInProgress();
 	for i := 0; i < WORKER_MAX; i++ {
-		go worker(lines, inProgress, &waitGroupWorker, lineWriter);
+		go worker(lines, inProgress, &waitGroupWorker, lineToOut);
 	}
 
 	csvFile, err := os.Open(csvFile());
@@ -184,9 +184,9 @@ func main() {
 	close(lines);
 	waitGroupWorker.Wait();
 
-	close(lineWriter.GetChanLine());
+	close(lineToOut.GetChanLine());
 	//waitGroupWriter.Wait();
-	lineWriter.GetWaitGroup().Wait();
+	lineToOut.GetWaitGroup().Wait();
 
 	fmt.Println("======= STOP  Site Response Checker =======");
 }
